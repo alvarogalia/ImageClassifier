@@ -14,8 +14,20 @@ import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
+import org.apache.commons.io.FileUtils;
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
+import javafx.embed.swing.SwingFXUtils;
+
+import javax.imageio.ImageIO;
 
 public class Controller {
     @FXML
@@ -41,7 +53,7 @@ public class Controller {
 
     private int faltante;
     private int total;
-
+    private List<File> listadoArchivos = new ArrayList<>();
     @FXML
     public void initialize() {
         btnDiscard.setVisible(false);
@@ -120,7 +132,7 @@ public class Controller {
 
                     btnComenzar.setDisable(true);
 
-                    final File[] actualImage = new File[1];
+
                     final int[] cant = new int[1];
                     mainPane.addEventHandler(KeyEvent.KEY_RELEASED, keyEvent -> {
                         total = cant[0] + faltante;
@@ -130,7 +142,7 @@ public class Controller {
                         btnComenzar.setText(texto);
                         if(keyEvent.getCode().getName().equals("1")){
                             try {
-                                FileUtils.moveFileToDirectory(actualImage[0], filePossitivePath, true);
+                                FileUtils.moveFileToDirectory(listadoArchivos.getFirst(), filePossitivePath, true);
                                 cant[0]++;
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -138,7 +150,7 @@ public class Controller {
                         }
                         if(keyEvent.getCode().getName().equals("2")){
                             try {
-                                FileUtils.moveFileToDirectory(actualImage[0], fileExcludePath, true);
+                                FileUtils.moveFileToDirectory(listadoArchivos.getFirst(), fileExcludePath, true);
                                 cant[0]++;
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -146,50 +158,44 @@ public class Controller {
                         }
                         if(keyEvent.getCode().getName().equals("3")){
                             try {
-                                FileUtils.moveFileToDirectory(actualImage[0], fileNegativePath, true);
+                                FileUtils.moveFileToDirectory(listadoArchivos.getFirst(), fileNegativePath, true);
                                 cant[0]++;
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
                         }
 
+
+                        listadoArchivos.removeFirst();
                         BufferedImage bi = null;
-                        listNext.getItems().clear();
-                        try {
-                            int first = 0;
-                            faltante = fileSourcePath.listFiles().length;
-                            for (File child : fileSourcePath.listFiles()) {
-                                bi = getImage(child);
-                                if(first==0){
-                                    if(bi != null){
-                                        actualImage[0] = child;
-                                        imgMain.setImage(SwingFXUtils.toFXImage(bi, null));
-                                    }else{
-                                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                                        alert.setTitle("ERROR");
-                                        alert.setHeaderText("No more images3");
-                                        alert.setContentText("There is no more images to classify in the specified path");
-                                        alert.showAndWait();
-                                    }
-                                }else{
-                                    if(first <= 10){
+                        listNext.getItems().removeFirst();
+                        int first = 0;
+                        faltante = listadoArchivos.size();
+                        for (File child : listadoArchivos) {
+                            if(first==0){
+                                System.out.println(child.getAbsolutePath() + " a principal");
+                                try {
+                                    bi = getImage(child);
+                                    imgMain.setImage(SwingFXUtils.toFXImage(bi, null));
+                                }catch(Exception exception){
+                                    System.out.println("Fallo en principal " + child.getAbsolutePath());
+                                }
+                            }else{
+                                if(first == 10){
+                                    try {
+                                        System.out.println(child.getAbsolutePath() + " a vista previa");
+                                        bi = getImage(child);
                                         ImageView preview = new ImageView();
-                                        preview.setImage(SwingFXUtils.toFXImage(resize(bi, 160,90), null));
+                                        preview.setImage(SwingFXUtils.toFXImage(resize(bi, 160, 90), null));
                                         preview.setId(child.getAbsolutePath());
                                         listNext.getItems().add(preview);
-                                    }else{
-                                        break;
+                                    }catch(Exception ex){
+                                        System.out.println("Fallo en vista previa " + child.getAbsolutePath());
                                     }
+                                    break;
                                 }
-                                first++;
                             }
-
-                        } catch (IOException e) {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("ERROR");
-                            alert.setHeaderText("No more images4");
-                            alert.setContentText(e.getMessage());
-                            alert.showAndWait();
+                            first++;
                         }
                     });
 
@@ -197,12 +203,15 @@ public class Controller {
                     listNext.getItems().clear();
                     try {
                         int first = 0;
-                        faltante = fileSourcePath.listFiles().length;
-                        for (File child : fileSourcePath.listFiles()) {
+                        for(File child : fileSourcePath.listFiles()){
+                            listadoArchivos.add(child);
+                        }
+                        faltante = listadoArchivos.size();
+
+                        for (File child : listadoArchivos) {
                             bi = getImage(child);
                             if(first==0){
                                 if(bi != null){
-                                    actualImage[0] = child;
                                     imgMain.setImage(SwingFXUtils.toFXImage(bi, null));
                                 }else{
                                     Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -258,7 +267,6 @@ public class Controller {
                                     bi = getImage(child);
                                     if(first==0){
                                         if(bi != null){
-                                            actualImage[0] = child;
                                             imgMain.setImage(SwingFXUtils.toFXImage(bi, null));
                                         }else{
                                             Alert alert = new Alert(Alert.AlertType.ERROR);
