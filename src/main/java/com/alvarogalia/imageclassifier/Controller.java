@@ -20,10 +20,8 @@ import java.io.File;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
-import java.util.Objects;
 
 import javafx.embed.swing.SwingFXUtils;
 
@@ -54,6 +52,8 @@ public class Controller {
     private int faltante;
     private int total;
     private List<File> listadoArchivos = new ArrayList<>();
+    private boolean movimiento = false;
+
     @FXML
     public void initialize() {
         btnDiscard.setVisible(false);
@@ -135,67 +135,73 @@ public class Controller {
 
                     final int[] cant = new int[1];
                     mainPane.addEventHandler(KeyEvent.KEY_RELEASED, keyEvent -> {
+                        movimiento = false;
                         total = cant[0] + faltante;
                         double porcentaje =  ((cant[0]*100)/ total);
-                        String texto = cant[0] + "/" + faltante + " " + (int)(porcentaje)+"%";
+                        String texto = cant[0] + "/" + total + " " + (int)(porcentaje)+"%";
                         progressbar.setProgress(porcentaje/100);
                         btnComenzar.setText(texto);
-                        if(keyEvent.getCode().getName().equals("1")){
+                        if(keyEvent.getText().equals("1")){
                             try {
                                 FileUtils.moveFileToDirectory(listadoArchivos.getFirst(), filePossitivePath, true);
                                 cant[0]++;
+                                listadoArchivos.removeFirst();
+                                movimiento = true;
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
                         }
-                        if(keyEvent.getCode().getName().equals("2")){
+                        if(keyEvent.getText().equals("2")){
                             try {
                                 FileUtils.moveFileToDirectory(listadoArchivos.getFirst(), fileExcludePath, true);
                                 cant[0]++;
+                                listadoArchivos.removeFirst();
+                                movimiento = true;
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
                         }
-                        if(keyEvent.getCode().getName().equals("3")){
+                        if(keyEvent.getText().equals("3")){
                             try {
                                 FileUtils.moveFileToDirectory(listadoArchivos.getFirst(), fileNegativePath, true);
                                 cant[0]++;
+                                listadoArchivos.removeFirst();
+                                movimiento = true;
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
                         }
-
-
-                        listadoArchivos.removeFirst();
-                        BufferedImage bi = null;
-                        listNext.getItems().removeFirst();
-                        int first = 0;
-                        faltante = listadoArchivos.size();
-                        for (File child : listadoArchivos) {
-                            if(first==0){
-                                System.out.println(child.getAbsolutePath() + " a principal");
-                                try {
-                                    bi = getImage(child);
-                                    imgMain.setImage(SwingFXUtils.toFXImage(bi, null));
-                                }catch(Exception exception){
-                                    System.out.println("Fallo en principal " + child.getAbsolutePath());
-                                }
-                            }else{
-                                if(first == 10){
+                        if(movimiento){
+                            faltante = listadoArchivos.size();
+                            BufferedImage bi = null;
+                            listNext.getItems().removeFirst();
+                            int first = 0;
+                            for (File child : listadoArchivos) {
+                                if(first==0){
+                                    System.out.println(child.getAbsolutePath() + " a principal");
                                     try {
-                                        System.out.println(child.getAbsolutePath() + " a vista previa");
                                         bi = getImage(child);
-                                        ImageView preview = new ImageView();
-                                        preview.setImage(SwingFXUtils.toFXImage(resize(bi, 160, 90), null));
-                                        preview.setId(child.getAbsolutePath());
-                                        listNext.getItems().add(preview);
-                                    }catch(Exception ex){
-                                        System.out.println("Fallo en vista previa " + child.getAbsolutePath());
+                                        imgMain.setImage(SwingFXUtils.toFXImage(bi, null));
+                                    }catch(Exception exception){
+                                        System.out.println("Fallo en principal " + child.getAbsolutePath());
                                     }
-                                    break;
+                                }else{
+                                    if(first == 10){
+                                        try {
+                                            System.out.println(child.getAbsolutePath() + " a vista previa");
+                                            bi = getImage(child);
+                                            ImageView preview = new ImageView();
+                                            preview.setImage(SwingFXUtils.toFXImage(resize(bi, 160, 90), null));
+                                            preview.setId(child.getAbsolutePath());
+                                            listNext.getItems().add(preview);
+                                        }catch(Exception ex){
+                                            System.out.println("Fallo en vista previa " + child.getAbsolutePath());
+                                        }
+                                        break;
+                                    }
                                 }
+                                first++;
                             }
-                            first++;
                         }
                     });
 
@@ -203,7 +209,10 @@ public class Controller {
                     listNext.getItems().clear();
                     try {
                         int first = 0;
-                        for(File child : fileSourcePath.listFiles()){
+                        File[] files = fileSourcePath.listFiles();
+                        Arrays.sort(files, Comparator.comparingLong(File::lastModified));
+
+                        for(File child : files){
                             listadoArchivos.add(child);
                         }
                         faltante = listadoArchivos.size();
